@@ -80,7 +80,7 @@ class BaseConnector(object):
         :arg \*\*kwargs: extra keyword arguments.
         :return: ``self``.
         """
-        self.connection.send(body=self.security.encode(msg),
+        self.connection.send(body=self.security.encode(msg, b64=self.use_b64),
                              destination=destination,
                              **kwargs)
         return self
@@ -126,7 +126,8 @@ class BaseConnector(object):
         if len(response_listener.responses) == 0:
             raise exc.TimeoutError
 
-        return response_listener.responses
+        return [self.security.decode(response, b64=self.use_b64)
+                for response in response_listener.responses]
 
     @property
     def id(self):
@@ -142,6 +143,16 @@ class BaseConnector(object):
             self._security = self.config.get_security()
 
         return self._security
+
+    @property
+    def use_b64(self):
+        """Determines if the message should be base64 encoded."""
+        try:
+            base64_option = self.config.get('plugin.activemq.base64')
+        except KeyError:
+            base64_option = None
+
+        return base64_option == 'yes'
 
     def set_listeners(self):
         """Set default listeners."""
